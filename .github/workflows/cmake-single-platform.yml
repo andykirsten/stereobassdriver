@@ -22,12 +22,38 @@ jobs:
       - name: Build (Release)
         run: cmake --build build --config Release
 
+      - name: Ad-hoc code sign bundles
+        run: |
+          set -euo pipefail
+          cd build/ydna_stereodrive_artefacts/Release
+          for bundle in VST3/stereodrive.vst3 AU/stereodrive.component Standalone/stereodrive.app; do
+            echo "Signing $bundle"
+            codesign --force --deep --sign - "$bundle"
+          done
+
+      - name: Verify code signatures and architectures
+        run: |
+          set -euo pipefail
+          cd build/ydna_stereodrive_artefacts/Release
+          for bundle in VST3/stereodrive.vst3 AU/stereodrive.component Standalone/stereodrive.app; do
+            echo "== Verifying $bundle =="
+            codesign --verify --deep --strict --verbose=4 "$bundle"
+            codesign -dv --verbose=4 "$bundle" 2>&1 | tee /tmp/codesign_info.txt
+            grep -q "Signature=adhoc" /tmp/codesign_info.txt
+
+            exe="$(find "$bundle/Contents/MacOS" -maxdepth 1 -type f | head -n1)"
+            echo "-- lipo -info $exe --"
+            lipo -info "$exe"
+            lipo -info "$exe" | grep -q "x86_64" || { echo "Missing x86_64 slice in $exe"; exit 1; }
+            lipo -info "$exe" | grep -q "arm64"  || { echo "Missing arm64 slice in $exe"; exit 1; }
+          done
+
       - name: Package artefacts
         run: |
           set -euo pipefail
           cd build/ydna_stereodrive_artefacts/Release
           ls -la
-          zip -r ../../../stereodrive-macos.zip VST3 AU Standalone
+          ditto -c -k --sequesterRsrc --keepParent VST3 AU Standalone ../../../stereodrive-macos.zip
 
       - name: Upload build artefact
         uses: actions/upload-artifact@v4
