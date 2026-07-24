@@ -1,0 +1,18 @@
+# Build output (CMake configure/build dir, FetchContent downloads of JUCE/Signalsmith)
+build/
+build-*/
+out/
+
+# Claude Code local-only session state
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# IDE / editor
+.vs/
+.vscode/
+*.user
+*.suo
+
+# OS cruft
+.DS_Store
+Thumbs.db
